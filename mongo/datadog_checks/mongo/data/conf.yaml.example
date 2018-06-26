@@ -29,6 +29,12 @@ instances:
     #   * 2 for ssl.CERT_REQUIRED (required and validated)
     # ssl_ca_certs: #  Path to the ca_certs file
     #
+
+    # By default, the check tags dbstats metrics with database names.
+    # Database names will be visible in the dashboards
+    # To avoid sending any database name as a tag, set to false
+    dbstats_tags: true
+
     # By default, the check collects a sample of metrics from MongoDB.
     # The (optional) `additional_metrics` parameter instructs the check to collect additional
     # metrics on specific topics.

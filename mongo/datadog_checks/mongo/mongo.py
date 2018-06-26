@@ -697,9 +697,11 @@ class MongoDb(AgentCheck):
             self.log.info('No MongoDB database found in URI. Defaulting to admin.')
             db_name = 'admin'
 
-        service_check_tags = [
-            "db:%s" % db_name
-        ]
+        dbstats_tags = _is_affirmative(instance.get('dbstats_tags', True))
+        if dbstats_tags:
+            service_check_tags = [
+                "db:%s" % db_name
+            ]
         service_check_tags.extend(tags)
 
         # ...add the `server` tag to the metrics' tags only
@@ -913,13 +915,12 @@ class MongoDb(AgentCheck):
                     )
 
                 # Submit the metric
-                metrics_tags = (
-                    tags +
-                    [
+                metrics_tags = (tags)
+                if dbstats_tags:
+                    metrics_tags.extend([
                         u"cluster:db:{0}".format(st),  # FIXME 6.0 - keep for backward compatibility
                         u"db:{0}".format(st),
-                    ]
-                )
+                    ])
 
                 submit_method, metric_name_alias = \
                     self._resolve_metric(metric_name, metrics_to_collect)
@@ -940,9 +941,11 @@ class MongoDb(AgentCheck):
                     if "." not in ns:
                         continue
 
-                    # configure tags for db name and collection name
-                    dbname, collname = ns.split(".", 1)
-                    ns_tags = tags + ["db:%s" % dbname, "collection:%s" % collname]
+                    ns_tags = tags
+                    if dbstats_tags:
+                        # configure tags for db name and collection name
+                        dbname, collname = ns.split(".", 1)
+                        ns_tags = ns_tags + ["db:%s" % dbname, "collection:%s" % collname]
 
                     # iterate over DBTOP metrics
                     for m in self.TOP_METRICS:
