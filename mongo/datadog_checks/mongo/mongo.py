@@ -915,7 +915,7 @@ class MongoDb(AgentCheck):
                     )
 
                 # Submit the metric
-                metrics_tags = (tags)
+                metrics_tags = list(tags)
                 if dbstats_tags:
                     metrics_tags.extend([
                         u"cluster:db:{0}".format(st),  # FIXME 6.0 - keep for backward compatibility
@@ -941,11 +941,11 @@ class MongoDb(AgentCheck):
                     if "." not in ns:
                         continue
 
-                    ns_tags = tags
+                    ns_tags = list(tags)
                     if dbstats_tags:
                         # configure tags for db name and collection name
                         dbname, collname = ns.split(".", 1)
-                        ns_tags = ns_tags + ["db:%s" % dbname, "collection:%s" % collname]
+                        ns_tags += ["db:%s" % dbname, "collection:%s" % collname]
 
                     # iterate over DBTOP metrics
                     for m in self.TOP_METRICS:
