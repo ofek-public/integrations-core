@@ -698,6 +698,7 @@ class MongoDb(AgentCheck):
             db_name = 'admin'
 
         dbstats_tags = _is_affirmative(instance.get('dbstats_tags', True))
+        service_check_tags = []
         if dbstats_tags:
             service_check_tags = [
                 "db:%s" % db_name
