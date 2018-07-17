@@ -1,4 +1,5 @@
 # stdlib
+import hashlib
 import re
 import time
 import urllib
@@ -697,12 +698,9 @@ class MongoDb(AgentCheck):
             self.log.info('No MongoDB database found in URI. Defaulting to admin.')
             db_name = 'admin'
 
-        dbstats_tags = _is_affirmative(instance.get('dbstats_tags', True))
-        service_check_tags = []
-        if dbstats_tags:
-            service_check_tags = [
-                "db:%s" % db_name
-            ]
+        service_check_tags = [
+            "db:%s" % db_name
+        ]
         service_check_tags.extend(tags)
 
         # ...add the `server` tag to the metrics' tags only
@@ -898,6 +896,7 @@ class MongoDb(AgentCheck):
             submit_method, metric_name_alias = self._resolve_metric(metric_name, metrics_to_collect)
             submit_method(self, metric_name_alias, value, tags=tags)
 
+        dbstats_tags = _is_affirmative(instance.get('dbstats_tags', True))
         for st, value in dbstats.iteritems():
             for metric_name in metrics_to_collect:
                 if not metric_name.startswith('stats.'):
@@ -916,12 +915,14 @@ class MongoDb(AgentCheck):
                     )
 
                 # Submit the metric
-                metrics_tags = list(tags)
-                if dbstats_tags:
-                    metrics_tags.extend([
-                        u"cluster:db:{0}".format(st),  # FIXME 6.0 - keep for backward compatibility
-                        u"db:{0}".format(st),
-                    ])
+                dbname_tag = st if dbstats_tags else hashlib.md5(st.encode()).hexdigest()
+                metrics_tags = (
+                    tags +
+                    [
+                        u"cluster:db:{0}".format(dbname_tag),  # FIXME 6.0 - keep for backward compatibility
+                        u"db:{0}".format(dbname_tag),
+                    ]
+                )
 
                 submit_method, metric_name_alias = \
                     self._resolve_metric(metric_name, metrics_to_collect)
@@ -942,11 +943,10 @@ class MongoDb(AgentCheck):
                     if "." not in ns:
                         continue
 
-                    ns_tags = list(tags)
-                    if dbstats_tags:
-                        # configure tags for db name and collection name
-                        dbname, collname = ns.split(".", 1)
-                        ns_tags += ["db:%s" % dbname, "collection:%s" % collname]
+                    # configure tags for db name and collection name
+                    dbname, collname = ns.split(".", 1)
+                    dbname = dbname if dbstats_tags else hashlib.md5(dbname.encode()).hexdigest()
+                    ns_tags = tags + ["db:%s" % dbname, "collection:%s" % collname]
 
                     # iterate over DBTOP metrics
                     for m in self.TOP_METRICS:
