@@ -698,8 +698,10 @@ class MongoDb(AgentCheck):
             self.log.info('No MongoDB database found in URI. Defaulting to admin.')
             db_name = 'admin'
 
+        dbstats_tags = _is_affirmative(instance.get('dbstats_tags', True))
+        db_name_tag = db_name if dbstats_tags else hashlib.md5(db_name.encode()).hexdigest()
         service_check_tags = [
-            "db:%s" % db_name
+            "db:%s" % db_name_tag
         ]
         service_check_tags.extend(tags)
 
@@ -896,7 +898,6 @@ class MongoDb(AgentCheck):
             submit_method, metric_name_alias = self._resolve_metric(metric_name, metrics_to_collect)
             submit_method(self, metric_name_alias, value, tags=tags)
 
-        dbstats_tags = _is_affirmative(instance.get('dbstats_tags', True))
         for st, value in dbstats.iteritems():
             for metric_name in metrics_to_collect:
                 if not metric_name.startswith('stats.'):
@@ -915,12 +916,12 @@ class MongoDb(AgentCheck):
                     )
 
                 # Submit the metric
-                dbname_tag = st if dbstats_tags else hashlib.md5(st.encode()).hexdigest()
+                st_tag = st if dbstats_tags else hashlib.md5(st.encode()).hexdigest()
                 metrics_tags = (
                     tags +
                     [
-                        u"cluster:db:{0}".format(dbname_tag),  # FIXME 6.0 - keep for backward compatibility
-                        u"db:{0}".format(dbname_tag),
+                        u"cluster:db:{0}".format(st_tag),  # FIXME 6.0 - keep for backward compatibility
+                        u"db:{0}".format(st_tag),
                     ]
                 )
 
@@ -1034,8 +1035,9 @@ class MongoDb(AgentCheck):
                 # grab the stats from the collection
                 stats = db.command("collstats", coll_name)
                 # loop through the metrics
+                db_name_tag = db_name if dbstats_tags else hashlib.md5(db_name.encode()).hexdigest()
                 for m in self.collection_metrics_names:
-                    coll_tags = tags + ["db:%s" % db_name, "collection:%s" % coll_name]
+                    coll_tags = tags + ["db:%s" % db_name_tag, "collection:%s" % coll_name]
                     value = stats.get(m, None)
                     if not value:
                         continue
